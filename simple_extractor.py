@@ -57,7 +57,7 @@ def get_arguments():
     parser.add_argument("--dataset", type=str, default='pascal', choices=['lip', 'atr', 'pascal'])
     parser.add_argument("--model-restore", type=str, default='checkpoints/exp-schp-201908270938-pascal-person-part.pth', help="restore pretrained model parameters.")
     parser.add_argument("--gpu", type=str, default='0', help="choose gpu device.")
-    #parser.add_argument("--input-dir", type=str, default='', help="path of input image folder.")
+    parser.add_argument("--integratedpifu-dir", type=str, default='', help="path of IntegratedPIFu folder.")
     parser.add_argument("--output-dir", type=str, default="render_human_parse_results", help="path of output image folder.")
     parser.add_argument("--logits", action='store_true', default=False, help="whether to save the logits.")
 
@@ -123,7 +123,7 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.406, 0.456, 0.485], std=[0.225, 0.224, 0.229])
     ])
-    dataset = SimpleFolderDataset(input_size=input_size, transform=transform)
+    dataset = SimpleFolderDataset( integratedpifu_dir = args.integratedpifu_dir ,input_size=input_size, transform=transform)
     dataloader = DataLoader(dataset)
 
     if not os.path.exists(args.output_dir):

@@ -20,29 +20,27 @@ from utils.transforms import get_affine_transform
 
 
 class SimpleFolderDataset(data.Dataset):
-    def __init__(self, input_size=[512, 512], transform=None):
-        #self.root = "/mnt/lustre/kennard.chan/render_THuman_with_blender/buffer_fixed_full_mesh"
-        self.root = "/content/drive/MyDrive/buffer_fixed_full_mesh" # for gdrive
+    def __init__(self, integratedpifu_dir = None, input_size=[512, 512], transform=None):
+        if integratedpifu_dir is None:
+            raise Exception("integratedpifu-dir option cannot be null! Please input the path to the IntegratedPIFu")
+
+        self.root = os.path.join(integratedpifu_dir, 'rendering_script' ,  'buffer_fixed_full_mesh')
 
         self.input_size = input_size
         self.transform = transform
         self.aspect_ratio = input_size[1] * 1.0 / input_size[0]
         self.input_size = np.asarray(input_size)
 
-        #self.training_subject_list = np.loadtxt("/mnt/lustre/kennard.chan/getTestSet/train_set_list.txt", dtype=str).tolist()
-        self.training_subject_list = np.loadtxt("/content/drive/MyDrive/train_set_list.txt", dtype=str).tolist()  # for gdrive
+        training_subject_list_path = os.path.join(integratedpifu_dir, 'train_set_list.txt')
+        self.training_subject_list = np.loadtxt(training_subject_list_path, dtype=str).tolist()  
 
 
-        #self.training_subject_list = np.loadtxt("/mnt/lustre/kennard.chan/getTestSet/fake_train_set_list.txt", dtype=str).tolist()
-        #self.training_subject_list = np.loadtxt("/content/drive/MyDrive/fake_train_set_list.txt", dtype=str).tolist()  # for gdrive
-        #print("using fake training subject list!")
-
-        #self.test_subject_list = np.loadtxt("/mnt/lustre/kennard.chan/getTestSet/test_set_list.txt", dtype=str).tolist()
-        self.test_subject_list = np.loadtxt("/content/drive/MyDrive/test_set_list.txt", dtype=str).tolist()
+        test_subject_list_path = os.path.join(integratedpifu_dir, 'test_set_list.txt')
+        self.test_subject_list = np.loadtxt(test_subject_list_path, dtype=str).tolist()
 
 
         self.subjects = self.training_subject_list # change to self.test_subject_list to get test subjects
-        #self.subjects = self.test_subject_list # change to self.test_subject_list to get test subjects
+        #self.subjects = self.test_subject_list
 
 
         self.file_list = []
@@ -50,6 +48,7 @@ class SimpleFolderDataset(data.Dataset):
             subject_render_folder = os.path.join(self.root, training_subject)
             subject_render_paths_list = [  os.path.join(subject_render_folder,f) for f in os.listdir(subject_render_folder) if "image" in f   ]
             self.file_list = self.file_list + subject_render_paths_list
+
         self.file_list = sorted(self.file_list)
 
 
