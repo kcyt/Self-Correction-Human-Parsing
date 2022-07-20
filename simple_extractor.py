@@ -54,11 +54,11 @@ def get_arguments():
     """
     parser = argparse.ArgumentParser(description="Self Correction for Human Parsing")
 
-    parser.add_argument("--dataset", type=str, default='lip', choices=['lip', 'atr', 'pascal'])
-    parser.add_argument("--model-restore", type=str, default='', help="restore pretrained model parameters.")
+    parser.add_argument("--dataset", type=str, default='pascal', choices=['lip', 'atr', 'pascal'])
+    parser.add_argument("--model-restore", type=str, default='checkpoints/exp-schp-201908270938-pascal-person-part.pth', help="restore pretrained model parameters.")
     parser.add_argument("--gpu", type=str, default='0', help="choose gpu device.")
-    parser.add_argument("--input-dir", type=str, default='', help="path of input image folder.")
-    parser.add_argument("--output-dir", type=str, default='', help="path of output image folder.")
+    #parser.add_argument("--input-dir", type=str, default='', help="path of input image folder.")
+    parser.add_argument("--output-dir", type=str, default="render_human_parse_results", help="path of output image folder.")
     parser.add_argument("--logits", action='store_true', default=False, help="whether to save the logits.")
 
     return parser.parse_args()
@@ -89,6 +89,12 @@ def get_palette(num_cls):
 
 
 def main():
+
+    if not os.path.exists("checkpoints"):
+        os.makedirs("checkpoints")
+
+
+
     args = get_arguments()
 
     gpus = [int(i) for i in args.gpu.split(',')]
@@ -117,11 +123,15 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.406, 0.456, 0.485], std=[0.225, 0.224, 0.229])
     ])
-    dataset = SimpleFolderDataset(root=args.input_dir, input_size=input_size, transform=transform)
+    dataset = SimpleFolderDataset(input_size=input_size, transform=transform)
     dataloader = DataLoader(dataset)
 
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
+        for subject in dataset.training_subject_list:
+            os.makedirs( os.path.join(args.output_dir, subject) ) 
+        for subject in dataset.test_subject_list:
+            os.makedirs( os.path.join(args.output_dir, subject) ) 
 
     palette = get_palette(num_classes)
     with torch.no_grad():
@@ -140,13 +150,46 @@ def main():
             upsample_output = upsample_output.permute(1, 2, 0)  # CHW -> HWC
 
             logits_result = transform_logits(upsample_output.data.cpu().numpy(), c, s, w, h, input_size=input_size)
-            parsing_result = np.argmax(logits_result, axis=2)
-            parsing_result_path = os.path.join(args.output_dir, img_name[:-4] + '.png')
+            parsing_result = np.argmax(logits_result, axis=2) # shape of [H,W]
+
+            numpy_to_save = np.copy(parsing_result)
+            Part0_mask = numpy_to_save == 0
+            Part1_mask = numpy_to_save == 1
+            Part2_mask = numpy_to_save == 2
+            Part3_mask = numpy_to_save == 3
+            Part4_mask = numpy_to_save == 4
+            Part5_mask = numpy_to_save == 5
+            Part6_mask = numpy_to_save == 6
+
+            numpy_to_save = numpy_to_save.astype(np.float32)
+
+            numpy_to_save[Part0_mask] = 0
+            numpy_to_save[Part1_mask] = 0.5
+            numpy_to_save[Part2_mask] = 0.6
+            numpy_to_save[Part3_mask] = 0.7
+            numpy_to_save[Part4_mask] = 0.8
+            numpy_to_save[Part5_mask] = 0.9
+            numpy_to_save[Part6_mask] = 1.0
+
+            numpy_result_path = os.path.join(args.output_dir, img_name + '.npy')
+            np.save(numpy_result_path, numpy_to_save)
+
+            """
+            image_result_path = os.path.join(args.output_dir, img_name + '.png')
+            image_to_save = numpy_to_save * 255.0 
+            image_to_save = image_to_save.astype(np.uint8)
+            image_to_save = Image.fromarray(image_to_save, 'L')
+            image_to_save.save(image_result_path)
+            """
+
+            """
+            parsing_result_path = os.path.join(args.output_dir, img_name + '.png')
             output_img = Image.fromarray(np.asarray(parsing_result, dtype=np.uint8))
             output_img.putpalette(palette)
             output_img.save(parsing_result_path)
+            """
             if args.logits:
-                logits_result_path = os.path.join(args.output_dir, img_name[:-4] + '.npy')
+                logits_result_path = os.path.join(args.output_dir, img_name + '.npy')
                 np.save(logits_result_path, logits_result)
     return
 
